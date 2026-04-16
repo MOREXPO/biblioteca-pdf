@@ -76,3 +76,21 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, book });
 }
+
+export async function DELETE(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const id = String(searchParams.get("id") || "").trim();
+  if (!id) return NextResponse.json({ ok: false, error: "id requerido" }, { status: 400 });
+
+  const books = await readBooks();
+  const target = books.find((b) => b.id === id);
+  if (!target) return NextResponse.json({ ok: false, error: "Libro no encontrado" }, { status: 404 });
+
+  const next = books.filter((b) => b.id !== id);
+  await writeBooks(next);
+
+  const fullPath = path.join(UPLOAD_DIR, target.filename);
+  await fs.unlink(fullPath).catch(() => {});
+
+  return NextResponse.json({ ok: true });
+}

@@ -91,27 +91,43 @@ export default function Home() {
       return;
     }
 
-    const form = new FormData();
-    form.set("title", title);
-    form.set("author", author);
-    form.set("genre", genre);
-    form.set("status", status);
-    form.set("file", file);
+    try {
+      const form = new FormData();
+      form.set("title", title);
+      form.set("author", author);
+      form.set("genre", genre);
+      form.set("status", status);
+      form.set("file", file);
 
-    const r = await fetch("/api/books", { method: "POST", body: form });
-    const data = await r.json();
+      const r = await fetch("/api/books", { method: "POST", body: form });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setMessage(data?.error || "No se pudo subir el libro");
+        return;
+      }
+
+      setTitle("");
+      setAuthor("");
+      setGenre(genresCatalog[0] || "Novela");
+      setStatus("PENDIENTE");
+      setFile(null);
+      await loadBooks();
+      setMessage("Libro subido correctamente 📚");
+    } catch {
+      setMessage("Error de conexión al subir el libro. Vuelve a intentarlo.");
+    }
+  }
+
+  async function deleteBook(id: string) {
+    if (!confirm("¿Seguro que quieres eliminar este libro?")) return;
+    const r = await fetch(`/api/books?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    const data = await r.json().catch(() => ({}));
     if (!r.ok) {
-      setMessage(data?.error || "No se pudo subir el libro");
+      setMessage(data?.error || "No se pudo eliminar el libro");
       return;
     }
-
-    setTitle("");
-    setAuthor("");
-    setGenre("Novela");
-    setStatus("PENDIENTE");
-    setFile(null);
     await loadBooks();
-    setMessage("Libro subido correctamente 📚");
+    setMessage("Libro eliminado correctamente 🗑️");
   }
 
   return (
@@ -141,7 +157,7 @@ export default function Home() {
               <option value="LEIDO">Leído</option>
             </select>
             <input className="w-full text-sm" type="file" accept="application/pdf,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            <button className="w-full rounded-lg bg-cyan-400 text-slate-950 font-semibold py-2 hover:bg-cyan-300 transition">Subir PDF</button>
+            <button type="submit" className="w-full rounded-lg bg-cyan-400 text-slate-950 font-semibold py-2 hover:bg-cyan-300 transition">Subir PDF</button>
             {message && <p className="text-sm text-cyan-200">{message}</p>}
           </form>
 
@@ -177,6 +193,9 @@ export default function Home() {
                       <a href={book.url} target="_blank" rel="noreferrer" className="flex-1 text-center px-3 py-2 rounded-lg bg-cyan-500 text-slate-950 text-sm font-semibold hover:bg-cyan-400 transition">Leer</a>
                       <a href={book.url} download={book.filename} className="flex-1 text-center px-3 py-2 rounded-lg border border-slate-500 text-sm font-semibold hover:bg-slate-800 transition">Descargar</a>
                     </div>
+                    <button onClick={() => deleteBook(book.id)} className="mt-2 w-full px-3 py-2 rounded-lg border border-rose-500/60 text-rose-300 text-sm font-semibold hover:bg-rose-500/10 transition">
+                      Eliminar
+                    </button>
                   </article>
                 ))
               )}
