@@ -6,6 +6,8 @@ type Book = {
   id: string;
   title: string;
   author: string;
+  genre?: string;
+  status?: "LEIDO" | "PENDIENTE";
   filename: string;
   url: string;
   uploadedAt: string;
@@ -38,6 +40,9 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const title = String(form.get("title") || "").trim();
   const author = String(form.get("author") || "").trim();
+  const genre = String(form.get("genre") || "General").trim();
+  const rawStatus = String(form.get("status") || "PENDIENTE").trim().toUpperCase();
+  const status: "LEIDO" | "PENDIENTE" = rawStatus === "LEIDO" ? "LEIDO" : "PENDIENTE";
   const file = form.get("file") as File | null;
 
   if (!title || !author || !file || !file.name) {
@@ -58,6 +63,8 @@ export async function POST(req: Request) {
     id: crypto.randomUUID(),
     title,
     author,
+    genre,
+    status,
     filename,
     url: `/uploads/${filename}`,
     uploadedAt: new Date().toISOString(),
