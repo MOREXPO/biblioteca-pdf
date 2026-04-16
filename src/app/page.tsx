@@ -23,6 +23,8 @@ export default function Home() {
   const [status, setStatus] = useState<"LEIDO" | "PENDIENTE">("PENDIENTE");
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
+  const [genresCatalog, setGenresCatalog] = useState<string[]>(["Novela"]);
+  const [newGenre, setNewGenre] = useState("");
 
   const [q, setQ] = useState("");
   const [authorFilter, setAuthorFilter] = useState("TODOS");
@@ -36,8 +38,18 @@ export default function Home() {
     setBooks(Array.isArray(data) ? data : []);
   }
 
+  async function loadGenres() {
+    const r = await fetch("/api/genres", { cache: "no-store" });
+    if (!r.ok) return;
+    const data = await r.json();
+    const list = Array.isArray(data) && data.length ? data : ["Novela"];
+    setGenresCatalog(list);
+    if (!list.includes(genre)) setGenre(list[0]);
+  }
+
   useEffect(() => {
     loadBooks();
+    loadGenres();
   }, []);
 
   const authors = useMemo(() => ["TODOS", ...Array.from(new Set(books.map((b) => b.author).filter(Boolean)))], [books]);
@@ -54,6 +66,22 @@ export default function Home() {
         return text.includes(q.toLowerCase());
       });
   }, [books, authorFilter, genreFilter, statusFilter, q]);
+
+  async function createGenre() {
+    const value = newGenre.trim();
+    if (!value) return;
+
+    const r = await fetch("/api/genres", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ genre: value }),
+    });
+    if (!r.ok) return;
+
+    await loadGenres();
+    setGenre(value);
+    setNewGenre("");
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -99,7 +127,15 @@ export default function Home() {
             <h2 className="text-xl font-semibold">Subir libro</h2>
             <input className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2" placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
             <input className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2" placeholder="Autor" value={author} onChange={(e) => setAuthor(e.target.value)} />
-            <input className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2" placeholder="Género" value={genre} onChange={(e) => setGenre(e.target.value)} />
+            <select className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2" value={genre} onChange={(e) => setGenre(e.target.value)}>
+              {genresCatalog.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <input className="flex-1 rounded-lg bg-slate-800 border border-slate-700 px-3 py-2" placeholder="Nuevo género" value={newGenre} onChange={(e) => setNewGenre(e.target.value)} />
+              <button type="button" onClick={createGenre} className="px-3 rounded-lg border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10">Crear</button>
+            </div>
             <select className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2" value={status} onChange={(e) => setStatus(e.target.value as any)}>
               <option value="PENDIENTE">Pendiente</option>
               <option value="LEIDO">Leído</option>
