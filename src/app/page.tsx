@@ -10,6 +10,7 @@ type Book = {
   status?: "LEIDO" | "PENDIENTE";
   filename: string;
   url: string;
+  coverUrl?: string;
   uploadedAt: string;
 };
 
@@ -22,6 +23,7 @@ export default function Home() {
   const [genre, setGenre] = useState("Novela");
   const [status, setStatus] = useState<"LEIDO" | "PENDIENTE">("PENDIENTE");
   const [file, setFile] = useState<File | null>(null);
+  const [cover, setCover] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [genresCatalog, setGenresCatalog] = useState<string[]>(["Novela"]);
   const [newGenre, setNewGenre] = useState("");
@@ -98,6 +100,7 @@ export default function Home() {
       form.set("genre", genre);
       form.set("status", status);
       form.set("file", file);
+      if (cover) form.set("cover", cover);
 
       const r = await fetch("/api/books", { method: "POST", body: form });
       const data = await r.json().catch(() => ({}));
@@ -111,6 +114,7 @@ export default function Home() {
       setGenre(genresCatalog[0] || "Novela");
       setStatus("PENDIENTE");
       setFile(null);
+      setCover(null);
       await loadBooks();
       setMessage("Libro subido correctamente 📚");
     } catch {
@@ -157,6 +161,8 @@ export default function Home() {
               <option value="LEIDO">Leído</option>
             </select>
             <input className="w-full text-sm" type="file" accept="application/pdf,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            <input className="w-full text-sm" type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] || null)} />
+            <p className="text-xs text-slate-400 -mt-1">Portada (opcional): JPG, PNG, WEBP…</p>
             <button type="submit" className="w-full rounded-lg bg-cyan-400 text-slate-950 font-semibold py-2 hover:bg-cyan-300 transition">Subir PDF</button>
             {message && <p className="text-sm text-cyan-200">{message}</p>}
           </form>
@@ -180,10 +186,23 @@ export default function Home() {
               ) : (
                 filtered.map((book, i) => (
                   <article key={book.id} className="rounded-2xl border border-slate-700 bg-[#0e1627] p-3 shadow-lg hover:-translate-y-1 transition">
-                    <div className={`rounded-xl bg-gradient-to-b ${coverColors[i % coverColors.length]} h-52 p-4 flex flex-col justify-between`}>
-                      <p className="text-xs uppercase tracking-wider text-white/80">{book.genre || "General"}</p>
-                      <h3 className="text-white font-bold text-lg leading-tight line-clamp-4">{book.title}</h3>
-                      <p className="text-white/90 text-sm">{book.author}</p>
+                    <div className={`rounded-xl ${book.coverUrl ? "bg-slate-900" : `bg-gradient-to-b ${coverColors[i % coverColors.length]}`} h-52 p-0 overflow-hidden flex flex-col justify-between`}>
+                      {book.coverUrl ? (
+                        <div className="relative h-full w-full">
+                          <img src={book.coverUrl} alt={`Portada de ${book.title}`} className="h-full w-full object-cover" />
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                            <p className="text-xs uppercase tracking-wider text-white/80">{book.genre || "General"}</p>
+                            <h3 className="text-white font-bold text-lg leading-tight line-clamp-2">{book.title}</h3>
+                            <p className="text-white/90 text-sm">{book.author}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-full p-4 flex flex-col justify-between">
+                          <p className="text-xs uppercase tracking-wider text-white/80">{book.genre || "General"}</p>
+                          <h3 className="text-white font-bold text-lg leading-tight line-clamp-4">{book.title}</h3>
+                          <p className="text-white/90 text-sm">{book.author}</p>
+                        </div>
+                      )}
                     </div>
                     <div className="mt-3 flex items-center justify-between text-xs">
                       <span className={`px-2 py-1 rounded-full ${book.status === "LEIDO" ? "bg-emerald-600/30 text-emerald-300" : "bg-amber-600/30 text-amber-300"}`}>{book.status === "LEIDO" ? "Leído" : "Pendiente"}</span>

@@ -10,6 +10,8 @@ type Book = {
   status?: "LEIDO" | "PENDIENTE";
   filename: string;
   url: string;
+  coverFilename?: string;
+  coverUrl?: string;
   uploadedAt: string;
 };
 
@@ -44,6 +46,7 @@ export async function POST(req: Request) {
   const rawStatus = String(form.get("status") || "PENDIENTE").trim().toUpperCase();
   const status: "LEIDO" | "PENDIENTE" = rawStatus === "LEIDO" ? "LEIDO" : "PENDIENTE";
   const file = form.get("file") as File | null;
+  const cover = form.get("cover") as File | null;
 
   if (!title || !author || !file || !file.name) {
     return NextResponse.json({ ok: false, error: "Faltan campos" }, { status: 400 });
@@ -59,6 +62,18 @@ export async function POST(req: Request) {
   const buffer = Buffer.from(await file.arrayBuffer());
   await fs.writeFile(fullPath, buffer);
 
+  let coverFilename: string | undefined;
+  if (cover && cover.name) {
+    const isImage = cover.type.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(cover.name);
+    if (isImage) {
+      const safeCover = cover.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      coverFilename = `${Date.now()}_cover_${safeCover}`;
+      const coverPath = path.join(UPLOAD_DIR, coverFilename);
+      const coverBuffer = Buffer.from(await cover.arrayBuffer());
+      await fs.writeFile(coverPath, coverBuffer);
+    }
+  }
+
   const book: Book = {
     id: crypto.randomUUID(),
     title,
@@ -67,6 +82,8 @@ export async function POST(req: Request) {
     status,
     filename,
     url: `/uploads/${filename}`,
+    coverFilename,
+    coverUrl: coverFilename ? `/uploads/${coverFilename}` : undefined,
     uploadedAt: new Date().toISOString(),
   };
 
@@ -91,6 +108,11 @@ export async function DELETE(req: Request) {
 
   const fullPath = path.join(UPLOAD_DIR, target.filename);
   await fs.unlink(fullPath).catch(() => {});
+
+  if (target.coverFilename) {
+    const coverPath = path.join(UPLOAD_DIR, target.coverFilename);
+    await fs.unlink(coverPath).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true });
 }
